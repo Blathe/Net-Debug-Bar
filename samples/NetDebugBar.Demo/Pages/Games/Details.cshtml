@@ -1,0 +1,133 @@
+﻿@page
+@model NetDebugBar.Demo.Pages.Games.DetailsModel
+
+@{
+    ViewData["Title"] = Model.Game.Name;
+}
+
+<h1>@Model.Game.Name</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h4>Game Details</h4>
+        <hr />
+        <dl class="row">
+            <dt class="col-sm-3">Name</dt>
+            <dd class="col-sm-9">@Model.Game.Name</dd>
+
+            <dt class="col-sm-3">Description</dt>
+            <dd class="col-sm-9">@(Model.Game.Description ?? "No description available")</dd>
+
+            <dt class="col-sm-3">Publisher</dt>
+            <dd class="col-sm-9">
+                @if (Model.Game.Publisher != null)
+                {
+                    <strong>@Model.Game.Publisher.Name</strong>
+                    @if (!string.IsNullOrEmpty(Model.Game.Publisher.Country))
+                    {
+                        <span class="text-muted"> (@Model.Game.Publisher.Country)</span>
+                    }
+                    @if (Model.Game.Publisher.FoundedDate.HasValue)
+                    {
+                        <br />
+                        <small class="text-muted">Founded: @Model.Game.Publisher.FoundedDate.Value.ToString("MMMM d, yyyy")</small>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">Unknown</span>
+                }
+            </dd>
+
+            <dt class="col-sm-3">Release Date</dt>
+            <dd class="col-sm-9">
+                @if (Model.Game.ReleaseDate.HasValue)
+                {
+                    @Model.Game.ReleaseDate.Value.ToString("MMMM d, yyyy")
+                }
+                else
+                {
+                    <span class="text-muted">Not specified</span>
+                }
+            </dd>
+
+            <dt class="col-sm-3">Price</dt>
+            <dd class="col-sm-9">
+                <span class="badge bg-info fs-6">$@Model.Game.Price.ToString("F2")</span>
+            </dd>
+
+            <dt class="col-sm-3">Rating</dt>
+            <dd class="col-sm-9">
+                <span class="badge bg-success fs-6">@Model.Game.Rating.ToString("F1") / 5.0</span>
+            </dd>
+
+            <dt class="col-sm-3">Genres</dt>
+            <dd class="col-sm-9">
+                @if (Model.Game.GameGenres.Any())
+                {
+                    foreach (var gg in Model.Game.GameGenres)
+                    {
+                        <span class="badge bg-primary me-1">@gg.Genre.Name</span>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">No genres assigned</span>
+                }
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h4>User Reviews (@Model.Game.Reviews.Count)</h4>
+        <hr />
+        @if (Model.Game.Reviews.Any())
+        {
+            var avgRating = Model.Game.Reviews.Average(r => r.Rating);
+            <div class="alert alert-info">
+                <strong>Average Review Rating:</strong> @avgRating.ToString("F2") / 5.0 stars
+            </div>
+
+            <div class="list-group">
+                @foreach (var review in Model.Game.Reviews.OrderByDescending(r => r.ReviewDate))
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="mb-1">@review.ReviewerName</h5>
+                            <small class="text-muted">@review.ReviewDate.ToString("MMM d, yyyy")</small>
+                        </div>
+                        <div class="mb-2">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= review.Rating)
+                                {
+                                    <span class="text-warning">★</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">☆</span>
+                                }
+                            }
+                            <span class="ms-2">(@review.Rating / 5)</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(review.Comment))
+                        {
+                            <p class="mb-0">@review.Comment</p>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No reviews yet.</p>
+        }
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-page="./Edit" asp-route-id="@Model.Game.Id" class="btn btn-primary">Edit</a>
+    <a asp-page="./Index" class="btn btn-secondary">Back to List</a>
+</div>

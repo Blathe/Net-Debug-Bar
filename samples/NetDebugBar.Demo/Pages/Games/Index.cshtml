@@ -1,0 +1,77 @@
+﻿@page
+@model NetDebugBar.Demo.Pages.Games.IndexModel
+
+@{
+    ViewData["Title"] = "Games Library";
+}
+
+<h1>Games Library</h1>
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">Create New Game</a>
+</p>
+
+<div class="row">
+    @foreach (var game in Model.Game)
+    {
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@game.Name</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        @if (game.Publisher != null)
+                        {
+                            <span>@game.Publisher.Name</span>
+                        }
+                        @if (game.ReleaseDate.HasValue)
+                        {
+                            <span> • @game.ReleaseDate.Value.ToString("MMM yyyy")</span>
+                        }
+                    </h6>
+
+                    @if (!string.IsNullOrEmpty(game.Description))
+                    {
+                        <p class="card-text">@game.Description</p>
+                    }
+
+                    <div class="mb-2">
+                        <strong>Genres:</strong>
+                        @if (game.GameGenres.Any())
+                        {
+                            <span>
+                                @string.Join(", ", game.GameGenres.Select(gg => gg.Genre.Name))
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">No genres</span>
+                        }
+                    </div>
+
+                    <div class="mb-2">
+                        <strong>Rating:</strong>
+                        <span class="badge bg-success">@game.Rating.ToString("F1") / 5.0</span>
+                        <strong class="ms-3">Price:</strong>
+                        <span class="badge bg-info">$@game.Price.ToString("F2")</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Reviews:</strong>
+                        <span class="badge bg-secondary">@game.Reviews.Count</span>
+                        @if (game.Reviews.Any())
+                        {
+                            var avgReviewRating = game.Reviews.Average(r => r.Rating);
+                            <span class="text-muted ms-2">(Avg: @avgReviewRating.ToString("F1") stars)</span>
+                        }
+                    </div>
+
+                    <div>
+                        <a asp-page="./Details" asp-route-id="@game.Id" class="btn btn-sm btn-outline-primary">Details</a>
+                        <a asp-page="./Edit" asp-route-id="@game.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a asp-page="./Delete" asp-route-id="@game.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

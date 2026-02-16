@@ -65,9 +65,9 @@ public class TimelinePanel : IDebugBarPanel
             <div class="ndb-timeline">
                 {{eventRows}}
                 <div class="ndb-timeline-row" style="border-top: 1px solid #555; margin-top: 8px; padding-top: 8px;">
-                    <div class="ndb-timeline-label" style="font-weight: bold; color: #0ff;">Total Duration</div>
+                    <div class="ndb-timeline-label" style="font-weight: bold; color: var(--ndb-accent-color);">Total Duration</div>
                     <div class="ndb-timeline-track"></div>
-                    <div class="ndb-timeline-time" style="font-weight: bold; color: #0ff;">{{totalDuration:0.##}}ms</div>
+                    <div class="ndb-timeline-time" style="font-weight: bold; color: var(--ndb-accent-color);">{{totalDuration:0.##}}ms</div>
                 </div>
             </div>
             """;

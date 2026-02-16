@@ -58,7 +58,12 @@ public class DebugBarHtmlRenderer
         var content = string.Join("", _panels.Select((panel, index) => RenderTabContent(panel, debug, index == 0)));
 
         return $$"""
-            <style>{{Css}}</style>
+            <style>
+            :root {
+                --ndb-accent-color: {{_options.AccentColor}};
+            }
+            {{Css}}
+            </style>
             <div id="ndb-bar">
                 <div id="ndb-header">
                     {{tabs}}
@@ -77,9 +82,8 @@ public class DebugBarHtmlRenderer
         var badge = panel.RenderBadge(debug);
         var badgeHtml = badge != null ? $" ({Encode(badge)})" : "";
         var activeClass = isFirst ? " active" : "";
-        var brandStyle = isFirst ? $" style=\"background-color:{_options.AccentColor};font-weight:bold;\"" : "";
 
-        return $"<div class=\"ndb-tab{activeClass}\" data-tab=\"{panel.TabId}\"{brandStyle}>{Encode(panel.TabLabel)}{badgeHtml}</div>";
+        return $"<div class=\"ndb-tab{activeClass}\" data-tab=\"{panel.TabId}\">{Encode(panel.TabLabel)}{badgeHtml}</div>";
     }
 
     private string RenderTabContent(IDebugBarPanel panel, NetDebugBarContext debug, bool isFirst)

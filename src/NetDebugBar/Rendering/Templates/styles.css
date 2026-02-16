@@ -26,7 +26,7 @@
     left: 0;
     height: 5px;
     width: 100%;
-    background-color: rgb(24, 120, 184);
+    background-color: var(--ndb-accent-color);
 }
 
 #ndb-header {
@@ -50,7 +50,7 @@
 }
 
 .ndb-tab.active {
-    background: #000;
+    background: var(--ndb-accent-color);
     font-weight: bold;
     color: white;
 }
@@ -117,7 +117,7 @@
 }
 
 .ndb-card.accent {
-    border-left-color: rgb(24, 120, 184);
+    border-left-color: var(--ndb-accent-color);
 }
 
 .ndb-card-label {
@@ -131,7 +131,7 @@
 .ndb-card-value {
     font-size: 14px;
     font-weight: bold;
-    color: rgb(24, 120, 184);
+    color: var(--ndb-accent-color);
 }
 
 .ndb-card-subtext {
@@ -239,7 +239,7 @@
 }
 
 .ndb-expandable summary:hover {
-    color: #0ff;
+    color: var(--ndb-accent-color);
 }
 
 .ndb-table {

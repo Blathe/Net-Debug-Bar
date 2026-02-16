@@ -179,6 +179,37 @@ All panels implement `IDebugBarPanel`:
 
 Panels are instantiated in `DebugBarHtmlRenderer` based on `NetDebugBarOptions`. All CSS/JavaScript are embedded as C# strings (no external files or Razor dependency).
 
+## N+1 Query Detection
+
+NetDebugBar automatically detects potential N+1 query problems by analyzing query patterns during request processing.
+
+**How it works:**
+1. **Pattern Normalization** - SQL queries are normalized by `NPlusOneDetector.NormalizeSql()` which:
+   - Replaces string literals with `?` placeholders
+   - Replaces numeric values with `?` placeholders
+   - Replaces parameter markers (@p0, @p1) with `?` placeholders
+   - Normalizes whitespace
+
+2. **Grouping** - Queries with identical normalized SQL are grouped together
+
+3. **Threshold Detection** - Groups with ≥ `NPlusOneThreshold` queries (default: 3) are flagged as potential N+1 problems
+
+4. **Display** - In `QueriesPanel.RenderTabContent()`:
+   - N+1 warnings appear at the top with yellow background
+   - Each group shows the count, total duration, and normalized pattern
+   - Individual queries are collapsible under each warning
+   - Tab badge shows ⚠️ icon when N+1 is detected
+
+**Configuration:**
+- `EnableNPlusOneDetection` (default: `true`) - Enable/disable feature
+- `NPlusOneThreshold` (default: `3`) - Minimum similar queries to flag as N+1
+
+**Implementation Details:**
+- Detection runs in `QueriesPanel.RenderBadge()` (called during rendering, not during query execution)
+- Results stored in `NetDebugBarContext.NPlusOneGroups`
+- Uses post-processing approach (analyzes all queries after collection) rather than real-time detection
+- Regex-based SQL normalization in `Utils/NPlusOneDetector.cs`
+
 ## UI Theming and Accent Colors
 
 The debug bar uses a CSS custom property (`--ndb-accent-color`) for consistent theming throughout the UI. The accent color is set via `options.AccentColor` and affects:

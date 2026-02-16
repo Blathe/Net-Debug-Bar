@@ -14,6 +14,7 @@ This repository contains:
 ## Features
 
 - **Database Query Tracking** - Captures all Entity Framework Core queries with execution time, parameters, and performance color-coding
+- **N+1 Query Detection** - Automatically identifies potential N+1 query problems by detecting similar queries executed in rapid succession
 - **Cache Operations** - Monitors IMemoryCache operations (Get/Set/Remove) with hit/miss tracking and statistics
 - **Logging Panel** - Displays all log entries with filtering by log level (Debug, Info, Warning, Error, Critical)
 - **Request Information** - Shows HTTP method, path, status code, headers, cookies, and request duration
@@ -93,6 +94,10 @@ builder.Services.AddNetDebugBar(options =>
     options.SlowQueryThresholdMs = 150;      // Red color
     options.MediumQueryThresholdMs = 50;     // Yellow color
 
+    // N+1 query detection
+    options.EnableNPlusOneDetection = true;  // Enable/disable N+1 detection
+    options.NPlusOneThreshold = 3;           // Minimum similar queries to flag as N+1
+
     // Logging configuration
     options.MinimumLogLevel = LogLevel.Debug;
 
@@ -137,6 +142,8 @@ Shows all Entity Framework Core queries:
 - SQL command text
 - Execution duration with color-coding (green < 50ms, yellow < 150ms, red ≥ 150ms)
 - Parameters with values and types
+- **N+1 query detection** - Automatically flags groups of similar queries that indicate potential N+1 problems
+- Warning indicators when N+1 patterns are detected
 - Separate sections for current and previous requests (if POST-Redirect-GET)
 
 ### Cache Panel

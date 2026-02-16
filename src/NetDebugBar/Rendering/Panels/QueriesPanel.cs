@@ -1,5 +1,6 @@
 using NetDebugBar.Core;
 using NetDebugBar.Core.Models;
+using NetDebugBar.Utils;
 
 namespace NetDebugBar.Rendering.Panels;
 
@@ -18,6 +19,18 @@ public class QueriesPanel : IDebugBarPanel
     public string? RenderBadge(NetDebugBarContext debug)
     {
         var total = debug.CurrentQueries.Count + (debug.PreviousSnapshot?.Queries.Count ?? 0);
+
+        // Detect N+1 if enabled
+        if (_options.EnableNPlusOneDetection && debug.CurrentQueries.Any())
+        {
+            debug.NPlusOneGroups = NPlusOneDetector.DetectNPlusOne(debug.CurrentQueries, _options.NPlusOneThreshold);
+
+            if (debug.NPlusOneGroups.Any())
+            {
+                return $"{total} ⚠️";
+            }
+        }
+
         return total > 0 ? total.ToString() : null;
     }
 
@@ -27,12 +40,17 @@ public class QueriesPanel : IDebugBarPanel
         var hasPrevious = debug.PreviousSnapshot?.Queries.Any() == true;
         var hasCurrent = debug.CurrentQueries.Any();
 
+        var nPlusOneWarnings = _options.EnableNPlusOneDetection && debug.NPlusOneGroups.Any()
+            ? RenderNPlusOneWarnings(debug.NPlusOneGroups)
+            : "";
+
         var previousQueries = hasPrevious ? RenderPreviousQueries(debug.PreviousSnapshot!.Queries) : "";
         var currentQueries = hasCurrent ? RenderCurrentQueries(debug.CurrentQueries) : "";
         var noQueries = !hasCurrent && !hasPrevious ? """<p style="color: #999; margin-top: 10px;">No queries recorded</p>""" : "";
 
         return $$"""
             {{legend}}
+            {{nPlusOneWarnings}}
             {{previousQueries}}
             {{currentQueries}}
             {{noQueries}}
@@ -49,6 +67,37 @@ public class QueriesPanel : IDebugBarPanel
                 <span style="margin: 0 8px;">|</span>
                 <span class="ndb-query-slow">● Slow &gt; {{_options.SlowQueryThresholdMs}}ms</span>
             </div>
+            """;
+    }
+
+    private string RenderNPlusOneWarnings(List<NPlusOneGroup> groups)
+    {
+        var warnings = string.Join("", groups.Select(RenderNPlusOneWarning));
+
+        return $$"""
+            <div style="background: rgba(255, 200, 0, 0.1); border-left: 3px solid #fc0; padding: 8px; margin-bottom: 12px; border-radius: 2px;">
+                <div style="font-weight: bold; color: #fc0; margin-bottom: 6px; font-size: 12px;">⚠️ N+1 Query Problems Detected</div>
+                {{warnings}}
+            </div>
+            """;
+    }
+
+    private string RenderNPlusOneWarning(NPlusOneGroup group)
+    {
+        var queriesHtml = string.Join("", group.Queries.Select(RenderQuery));
+
+        return $$"""
+            <details style="margin-bottom: 8px;" open>
+                <summary style="cursor: pointer; font-size: 11px; color: #fc0; user-select: none; padding: 4px 0;">
+                    <strong>{{group.Count}} similar queries</strong> ({{group.TotalDuration:0.##}}ms total) - Possible N+1 problem
+                </summary>
+                <div style="margin-left: 12px; margin-top: 6px;">
+                    <div style="font-size: 10px; color: #999; margin-bottom: 6px;">Pattern: {{Encode(group.NormalizedSql)}}</div>
+                    <ul class="ndb-queries-list" style="margin: 0; padding-left: 15px;">
+                        {{queriesHtml}}
+                    </ul>
+                </div>
+            </details>
             """;
     }
 

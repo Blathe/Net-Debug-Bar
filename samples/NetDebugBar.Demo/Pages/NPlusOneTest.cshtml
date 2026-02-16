@@ -1,0 +1,42 @@
+@page
+@model NetDebugBar.Demo.Pages.NPlusOneTestModel
+@{
+    ViewData["Title"] = "N+1 Query Test";
+}
+
+<div class="container">
+    <h1 class="mt-4 mb-4">N+1 Query Detection Test</h1>
+
+    <div class="alert alert-warning">
+        <strong>⚠️ Test Page:</strong> This page deliberately creates N+1 query problems to demonstrate the NetDebugBar detection feature.
+        Check the Queries panel in the debug bar below to see the N+1 warnings.
+    </div>
+
+    <h3>Games and Publishers (Bad - N+1 Queries)</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Game</th>
+                <th>Publisher</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var game in Model.Games)
+            {
+                <tr>
+                    <td>@game.Name</td>
+                    <td>@(game.Publisher?.Name ?? "N/A")</td>
+                    <td>@game.Price.ToString("C")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <p class="text-muted">
+        <small>
+            <strong>What's happening:</strong> Loading @Model.Games.Count games without .Include(g => g.Publisher),
+            then accessing Publisher for each game in the loop causes @Model.Games.Count separate queries for publishers.
+        </small>
+    </p>
+</div>

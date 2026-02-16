@@ -10,6 +10,7 @@ public class NetDebugBarContext
     // Queries panel
     public List<QueryInfo> CurrentQueries { get; set; } = new();
     public List<QueryInfo>? PreviousQueries { get; set; }
+    public List<NPlusOneGroup> NPlusOneGroups { get; set; } = new();
 
     // Request panel
     public RequestInfo? Request { get; set; }

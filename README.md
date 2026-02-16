@@ -226,11 +226,20 @@ dotnet build
 
 ### Run Demo Application
 
+First-time setup:
+
+```bash
+# Copy the example appsettings file
+cp samples/NetDebugBar.Demo/appsettings.json.example samples/NetDebugBar.Demo/appsettings.json
+```
+
+Then run the application:
+
 ```bash
 dotnet run --project samples/NetDebugBar.Demo
 ```
 
-Then navigate to `http://localhost:5284` (or the URL shown in console output) to see NetDebugBar in action with a full CRUD interface demonstrating all panels.
+Navigate to `http://localhost:5284` (or the URL shown in console output) to see NetDebugBar in action with a full CRUD interface demonstrating all panels.
 
 ### Project Structure
 

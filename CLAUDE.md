@@ -12,7 +12,7 @@ The library displays detailed information about database queries, cache operatio
 
 ## Build and Run Commands
 
-From repository root (`F:\Workspace\c#\C#DebugBarTest\`):
+From repository root:
 
 ```bash
 # Build the entire solution

@@ -7,6 +7,8 @@ public class CacheOperationInfo
     public bool? IsHit { get; set; }
     public double DurationMs { get; set; }
     public string? ValueTypeName { get; set; }
+    public int? CollectionCount { get; set; }
+    public Dictionary<string, int> RelatedEntityTypes { get; set; } = new();
     public long? EstimatedSizeBytes { get; set; }
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
 }

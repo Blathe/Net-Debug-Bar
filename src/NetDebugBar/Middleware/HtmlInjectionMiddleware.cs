@@ -1,6 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using NetDebugBar.Core;
 using NetDebugBar.Core.Models;
 using NetDebugBar.Rendering;
@@ -39,6 +42,9 @@ public class HtmlInjectionMiddleware
 
                 // Populate request info
                 PopulateRequestInfo(context, debug, bufferStream.Length);
+
+                // Capture entity tracking info
+                CaptureEntityTracking(context, debug, options);
 
                 // Generate debug bar HTML
                 var renderer = new DebugBarHtmlRenderer(options);
@@ -106,6 +112,83 @@ public class HtmlInjectionMiddleware
         // Query parameters
         foreach (var param in context.Request.Query)
             debug.Request.QueryParameters[param.Key] = param.Value.ToString();
+
+        // Capture PageModel or Controller info
+        var endpoint = context.GetEndpoint();
+        if (endpoint != null)
+        {
+            // Try Razor Pages first
+            var pageDescriptor = endpoint.Metadata
+                .GetMetadata<CompiledPageActionDescriptor>();
+
+            if (pageDescriptor != null && pageDescriptor.ModelTypeInfo != null)
+            {
+                if (debug.CurrentModels == null)
+                    debug.CurrentModels = new ModelInfo();
+
+                debug.CurrentModels.PageModelType = pageDescriptor.ModelTypeInfo.Name;
+            }
+            else
+            {
+                // Try MVC Controller
+                var controllerDescriptor = endpoint.Metadata
+                    .GetMetadata<ControllerActionDescriptor>();
+
+                if (controllerDescriptor != null)
+                {
+                    if (debug.CurrentModels == null)
+                        debug.CurrentModels = new ModelInfo();
+
+                    debug.CurrentModels.ControllerName = controllerDescriptor.ControllerName;
+                    debug.CurrentModels.ActionName = controllerDescriptor.ActionName;
+                }
+            }
+        }
+    }
+
+    private void CaptureEntityTracking(HttpContext context, NetDebugBarContext debug, NetDebugBarOptions options)
+    {
+        if (!options.EnableModelsPanel || options.TrackedDbContextTypes.Count == 0)
+            return;
+
+        try
+        {
+            var allEntities = new List<EntityModelInfo>();
+
+            foreach (var dbContextType in options.TrackedDbContextTypes)
+            {
+                var dbContext = context.RequestServices.GetService(dbContextType) as DbContext;
+                if (dbContext == null) continue;
+
+                var entities = dbContext.ChangeTracker.Entries()
+                    .GroupBy(e => e.Metadata.ClrType.Name)
+                    .Select(g => new EntityModelInfo
+                    {
+                        TypeName = g.Key,
+                        Count = g.Count(),
+                        AddedCount = g.Count(e => e.State == EntityState.Added),
+                        ModifiedCount = g.Count(e => e.State == EntityState.Modified),
+                        DeletedCount = g.Count(e => e.State == EntityState.Deleted),
+                        UnchangedCount = g.Count(e => e.State == EntityState.Unchanged)
+                    })
+                    .OrderByDescending(e => e.Count)
+                    .ToList();
+
+                allEntities.AddRange(entities);
+            }
+
+            if (allEntities.Any())
+            {
+                if (debug.CurrentModels == null)
+                    debug.CurrentModels = new ModelInfo();
+
+                debug.CurrentModels.EntityModels = allEntities;
+            }
+        }
+        catch
+        {
+            // Silently fail if DbContext unavailable
+        }
     }
 
     private string? GetRouteTemplate(HttpContext context)

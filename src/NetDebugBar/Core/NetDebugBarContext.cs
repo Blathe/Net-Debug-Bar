@@ -24,6 +24,9 @@ public class NetDebugBarContext
     // Logging panel
     public List<LogEntry> LogEntries { get; set; } = new();
 
+    // Models panel
+    public ModelInfo? CurrentModels { get; set; }
+
     // For previous-request data (PRG pattern)
     public NetDebugBarContextSnapshot? PreviousSnapshot { get; set; }
 }

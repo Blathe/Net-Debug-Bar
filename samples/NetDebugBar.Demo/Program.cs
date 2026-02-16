@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add NetDebugBar services
 builder.Services.AddNetDebugBar(options => {
     options.AccentColor = "rgb(24, 120, 184)";
+    options.TrackDbContext<ApplicationDbContext>();
 });
 
 // Add services to the container.

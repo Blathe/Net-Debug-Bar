@@ -32,6 +32,9 @@ public class DebugBarHtmlRenderer
         if (options.EnableCachePanel)
             _panels.Add(new CachePanel());
 
+        if (options.EnableModelsPanel)
+            _panels.Add(new ModelsPanel());
+
         if (options.EnableLoggingPanel)
             _panels.Add(new LoggingPanel());
 

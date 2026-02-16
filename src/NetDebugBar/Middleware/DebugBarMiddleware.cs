@@ -64,6 +64,7 @@ public class DebugBarMiddleware
             CacheOperations = debug.CacheOperations.ToList(),
             TimelineEvents = debug.TimelineEvents.ToList(),
             LogEntries = debug.LogEntries.ToList(),
+            Models = debug.CurrentModels
         };
     }
 }

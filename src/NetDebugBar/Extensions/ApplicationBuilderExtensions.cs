@@ -31,6 +31,7 @@ public static class ApplicationBuilderExtensions
         app.UseMiddleware<DebugBarMiddleware>();
 
         // HTML injection middleware: must be last to wrap the full response
+        // (also handles entity tracking before rendering)
         app.UseMiddleware<HtmlInjectionMiddleware>();
 
         return app;

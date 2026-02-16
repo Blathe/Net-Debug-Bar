@@ -97,9 +97,30 @@ builder.Services.AddNetDebugBar(options =>
     options.MinimumLogLevel = LogLevel.Debug;
 
     // UI customization
-    options.AccentColor = "#a855f7";  // Purple accent color
+    options.AccentColor = "#a855f7";  // Purple accent color (default)
+    // Supports any CSS color: hex, rgb, rgba, hsl, or named colors
+    // Examples: "#ff0000", "rgb(24, 120, 184)", "rgba(255, 0, 0, 0.8)", "blue"
 });
 ```
+
+### UI Customization
+
+The `AccentColor` option allows you to customize the color theme of the debug bar. This single setting affects all accent elements throughout the UI:
+
+- **Header top border** - 5px colored stripe at the top of the debug bar
+- **Active tab** - Background color of the currently selected panel tab
+- **Dashboard cards** - Accent borders and value colors in the Overview panel
+- **Interactive elements** - Hover states for expandable sections
+- **Timeline** - Total request duration display
+
+**Supported Color Formats:**
+- Hex: `#a855f7`, `#f00`
+- RGB: `rgb(24, 120, 184)`
+- RGBA: `rgba(168, 85, 247, 0.8)`
+- HSL: `hsl(271, 91%, 65%)`
+- Named: `purple`, `blue`, `red`
+
+**Default:** `#a855f7` (purple)
 
 ## Panels Overview
 

@@ -168,6 +168,25 @@ All panels implement `IDebugBarPanel`:
 
 Panels are instantiated in `DebugBarHtmlRenderer` based on `NetDebugBarOptions`. All CSS/JavaScript are embedded as C# strings (no external files or Razor dependency).
 
+## UI Theming and Accent Colors
+
+The debug bar uses a CSS custom property (`--ndb-accent-color`) for consistent theming throughout the UI. The accent color is set via `options.AccentColor` and affects:
+
+- **Header top border** - 5px colored stripe at the top of the debug bar
+- **Active tab background** - Highlighted tab showing the currently selected panel
+- **Dashboard card accents** - Left border on accent-styled cards in the Overview panel
+- **Dashboard card values** - Primary value text in dashboard cards
+- **Expandable summary hover** - Hover color for expandable sections (headers, cookies, parameters)
+- **Timeline total duration** - Color for the total request duration display
+
+**Implementation:**
+- `DebugBarHtmlRenderer.Render()` dynamically injects `:root { --ndb-accent-color: <value>; }` using the configured color
+- All accent color CSS rules use `var(--ndb-accent-color)` instead of hardcoded colors
+- Supports any valid CSS color value: hex (`#a855f7`), rgb (`rgb(24, 120, 184)`), named colors (`purple`), etc.
+- Default value: `#a855f7` (purple) defined in `NetDebugBarOptions`
+
+This approach ensures the entire UI respects the user's accent color preference without requiring multiple configuration options.
+
 ## Important Implementation Notes
 
 - **Development Only** - Always wrap `app.UseNetDebugBar()` in `if (app.Environment.IsDevelopment())` checks

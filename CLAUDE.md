@@ -36,6 +36,17 @@ dotnet restore
 
 The demo app runs on http://localhost:5284 (or http://localhost:5000) and demonstrates all NetDebugBar features with a Games CRUD interface.
 
+### First-Time Setup
+
+Before running the demo application for the first time:
+
+```bash
+# Copy the example configuration file
+cp samples/NetDebugBar.Demo/appsettings.json.example samples/NetDebugBar.Demo/appsettings.json
+```
+
+The `appsettings.json` file is not tracked in git (contains connection strings and sensitive config). The example file provides safe defaults using LocalDB.
+
 ## Architecture Overview
 
 ### Solution Structure
@@ -186,6 +197,27 @@ The debug bar uses a CSS custom property (`--ndb-accent-color`) for consistent t
 - Default value: `#a855f7` (purple) defined in `NetDebugBarOptions`
 
 This approach ensures the entire UI respects the user's accent color preference without requiring multiple configuration options.
+
+## Repository Hygiene
+
+### What's Ignored
+
+The root `.gitignore` excludes:
+- **Build artifacts**: `bin/`, `obj/`, `Debug/`, `Release/`, `*.dll`, `*.exe`, `*.pdb`
+- **IDE files**: `.vs/`, `.vscode/`, `.idea/`, `*.user`, `*.suo`
+- **Sensitive config**: `appsettings.json`, `appsettings.*.json` (except `appsettings.Development.json`)
+- **User-specific**: `launchSettings.json`, `*.csproj.user`
+- **NuGet**: `*.nupkg`, `packages/`, `artifacts/`
+- **Test results**: `TestResults/`, `*.trx`, `*.coverage`
+- **Temporary files**: `*.log`, `*.tmp`, `*.bak`
+
+### Configuration Files
+
+- **appsettings.Development.json** - Safe to commit; contains development logging config
+- **appsettings.json** - NOT tracked; contains connection strings and environment-specific config
+- **appsettings.json.example** - Template file with safe defaults; copy to `appsettings.json` for local development
+
+When adding sensitive configuration, always use user secrets (`dotnet user-secrets`) or environment variables rather than committing to `appsettings.json`.
 
 ## Important Implementation Notes
 

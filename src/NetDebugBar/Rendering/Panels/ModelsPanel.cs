@@ -6,7 +6,7 @@ namespace NetDebugBar.Rendering.Panels;
 public class ModelsPanel : IDebugBarPanel
 {
     public string TabId => "models";
-    public string TabLabel => "Models";
+    public string TabLabel => "Entities";
 
     public string? RenderBadge(NetDebugBarContext debug)
     {
@@ -80,7 +80,7 @@ public class ModelsPanel : IDebugBarPanel
         if (!hasAnyEntities)
             return pageControllerInfo;
 
-        var summary = RenderSummary(models);
+        var summary = RenderSummary(models, cachedEntities);
         var unifiedTable = RenderUnifiedEntityTable(models.EntityModels, cachedEntities);
 
         return $$"""
@@ -116,13 +116,26 @@ public class ModelsPanel : IDebugBarPanel
         return "";
     }
 
-    private string RenderSummary(ModelInfo models)
+    private string RenderSummary(ModelInfo models, List<CachedEntityInfo> cachedEntities)
     {
-        var totalEntities = models.EntityModels.Sum(e => e.Count);
-        var totalTypes = models.EntityModels.Count;
+        // Count tracked entities
+        var trackedEntities = models.EntityModels.Sum(e => e.Count);
+        var trackedTypes = models.EntityModels.Count;
         var totalAdded = models.EntityModels.Sum(e => e.AddedCount);
         var totalModified = models.EntityModels.Sum(e => e.ModifiedCount);
         var totalDeleted = models.EntityModels.Sum(e => e.DeletedCount);
+
+        // Count cached entities
+        var cachedEntityCount = cachedEntities.Sum(e => e.TotalCount);
+        var cachedTypeCount = cachedEntities.Count;
+
+        // Combine totals (unique types)
+        var allTypes = new HashSet<string>();
+        allTypes.UnionWith(models.EntityModels.Select(e => e.TypeName));
+        allTypes.UnionWith(cachedEntities.Select(e => e.TypeName));
+
+        var totalEntities = trackedEntities + cachedEntityCount;
+        var totalTypes = allTypes.Count;
 
         return $$"""
             <div class="ndb-dashboard" style="margin-bottom: 8px;">

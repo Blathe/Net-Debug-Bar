@@ -5,6 +5,12 @@ A comprehensive debug toolbar for ASP.NET Core 9 applications, inspired by Larav
 ![.NET Version](https://img.shields.io/badge/.NET-9.0-purple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
+## Repository Structure
+
+This repository contains:
+- **src/NetDebugBar/** - The reusable NetDebugBar class library
+- **samples/NetDebugBar.Demo/** - Demo Razor Pages application showcasing all features
+
 ## Features
 
 - **Database Query Tracking** - Captures all Entity Framework Core queries with execution time, parameters, and performance color-coding
@@ -17,8 +23,19 @@ A comprehensive debug toolbar for ASP.NET Core 9 applications, inspired by Larav
 
 ## Installation
 
+### Option 1: NuGet Package (Coming Soon)
+
 ```bash
 dotnet add package NetDebugBar
+```
+
+### Option 2: Clone and Build Locally
+
+```bash
+git clone <repository-url>
+cd NetDebugBar
+dotnet build
+# Reference the project or use the built DLL
 ```
 
 ## Quick Start
@@ -139,19 +156,38 @@ Visual representation of request pipeline:
 
 ## How It Works
 
+### Data Collection
+
 NetDebugBar uses several techniques to capture debug data:
 
-1. **EF Core Interceptor** (`DbCommandInterceptor`) - Captures SQL queries and parameters
-2. **Decorator Pattern** (`IMemoryCache` wrapper) - Intercepts cache operations
-3. **Logger Provider** (`ILoggerProvider`) - Captures log entries
-4. **Diagnostic Listener** - Subscribes to ASP.NET Core diagnostic events for timeline
-5. **Response Buffering Middleware** - Injects HTML into responses before `</body>` tag
+1. **EF Core Interceptor** (`NetDebugBarQueryInterceptor` implements `DbCommandInterceptor`) - Captures SQL queries, parameters, and execution time
+2. **Decorator Pattern** (`NetDebugBarMemoryCache` wraps `IMemoryCache`) - Intercepts cache Get/Set/Remove operations
+3. **Logger Provider** (`DebugBarLoggerProvider` implements `ILoggerProvider`) - Captures all log entries written via `ILogger`
+4. **Diagnostic Listener** (`TimelineDiagnosticObserver`) - Subscribes to ASP.NET Core diagnostic events for request pipeline phases
+5. **Response Buffering Middleware** - Injects HTML into responses before `</body>` tag without requiring layout modifications
+
+### Middleware Pipeline
+
+The debug bar uses three middleware components registered in this order:
+
+1. **TimelineMiddleware** - Outermost middleware capturing full request timing
+2. **DebugBarMiddleware** - Handles POST-Redirect-GET pattern with server-side storage
+3. **HtmlInjectionMiddleware** - Buffers response and injects debug bar HTML
+
+### POST-Redirect-GET Support
+
+To preserve debug data across redirects without hitting cookie size limits:
+- POST request data is captured in `NetDebugBarContext`
+- On redirect response (3xx), a snapshot is stored server-side with a GUID key
+- Small cookie contains only the GUID (not the full debug data)
+- Redirected GET request retrieves the snapshot and displays both "Previous Request" and "Current Request"
+- Snapshots auto-cleanup after 60 seconds
 
 The middleware automatically:
 - Detects HTML responses (`text/html` content type)
-- Generates debug bar HTML with inline CSS/JavaScript
-- Injects before closing `</body>` tag
-- Handles POST-Redirect-GET pattern with cookie-based storage
+- Generates debug bar HTML with inline CSS/JavaScript (no external files)
+- Injects before closing `</body>` tag (or appends if no closing tag found)
+- Handles concurrent requests safely with request-scoped data collection
 
 ## Requirements
 
@@ -173,21 +209,32 @@ dotnet build
 dotnet run --project samples/NetDebugBar.Demo
 ```
 
-Then navigate to `http://localhost:5000` to see NetDebugBar in action.
+Then navigate to `http://localhost:5284` (or the URL shown in console output) to see NetDebugBar in action with a full CRUD interface demonstrating all panels.
 
 ### Project Structure
 
 ```
 NetDebugBar/
-├── src/NetDebugBar/              # Main library
-│   ├── Core/                     # Core models and storage
-│   ├── Middleware/               # Request pipeline middleware
-│   ├── Rendering/                # HTML rendering and panels
-│   │   └── Panels/              # Individual panel implementations
-│   ├── Logging/                  # Logger provider
-│   ├── Interceptors/             # EF Core query interceptor
-│   └── Cache/                    # Memory cache decorator
-└── samples/NetDebugBar.Demo/     # Demo ASP.NET Core application
+├── src/NetDebugBar/                    # Main library (.NET 9.0)
+│   ├── Core/                           # NetDebugBarContext, DebugBarStorage, models
+│   ├── Extensions/                     # DI registration (AddNetDebugBar, UseNetDebugBar)
+│   ├── Middleware/                     # DebugBarMiddleware, HtmlInjectionMiddleware, TimelineMiddleware
+│   ├── Rendering/                      # DebugBarHtmlRenderer
+│   │   └── Panels/                     # IDebugBarPanel implementations (6 panels)
+│   ├── Logging/                        # DebugBarLoggerProvider, DebugBarLogger
+│   ├── Interceptors/                   # NetDebugBarQueryInterceptor (EF Core)
+│   ├── Cache/                          # NetDebugBarMemoryCache (IMemoryCache decorator)
+│   ├── Timeline/                       # TimelineDiagnosticObserver
+│   ├── Utils/                          # Helper methods
+│   ├── CLAUDE.md                       # Library-specific development guide
+│   └── README.md                       # Library documentation
+├── samples/NetDebugBar.Demo/           # Demo Razor Pages application
+│   ├── Data/                           # DbContext and entity models
+│   ├── Pages/                          # Razor Pages (Games CRUD)
+│   └── Program.cs                      # App configuration with NetDebugBar
+├── CLAUDE.md                           # Repository development guide
+├── README.md                           # This file
+└── NetDebugBar.sln                     # Solution file
 ```
 
 ## Important Notes

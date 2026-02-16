@@ -1,4 +1,3 @@
-using System.Text;
 using NetDebugBar.Core;
 
 namespace NetDebugBar.Rendering.Panels;
@@ -15,123 +14,150 @@ public class RequestPanel : IDebugBarPanel
 
     public string RenderTabContent(NetDebugBarContext debug)
     {
-        var sb = new StringBuilder();
         var req = debug.Request;
 
         if (req == null)
-        {
-            sb.Append("<p style=\"color: #999;\">No request info available</p>");
-            return sb.ToString();
-        }
+            return """<p style="color: #999;">No request info available</p>""";
 
-        // Summary cards
-        sb.Append("<div class=\"ndb-dashboard\" style=\"margin-bottom: 16px;\">");
-        RenderCard(sb, "Method", req.Method, GetMethodColor(req.Method));
-        RenderCard(sb, "Status", req.StatusCode.ToString(), GetStatusColor(req.StatusCode));
-        RenderCard(sb, "Duration", $"{req.DurationMs:0.##}ms");
-        if (req.ResponseSize.HasValue)
-        {
-            RenderCard(sb, "Response Size", FormatBytes(req.ResponseSize.Value));
-        }
-        sb.Append("</div>");
+        var cards = RenderCards(req);
+        var pathInfo = RenderPathInfo(req);
+        var queryParams = RenderQueryParameters(req);
+        var headers = RenderHeaders(req);
+        var cookies = RenderCookies(req);
 
-        // Path and Route
-        sb.Append("<div class=\"ndb-info-section\">");
-        sb.Append($"<div class=\"ndb-info-label\">Path</div>");
-        sb.Append($"<div class=\"ndb-info-value\">{Encode(req.Path)}</div>");
-        sb.Append("</div>");
-
-        if (!string.IsNullOrEmpty(req.QueryString))
-        {
-            sb.Append("<div class=\"ndb-info-section\">");
-            sb.Append($"<div class=\"ndb-info-label\">Query String</div>");
-            sb.Append($"<div class=\"ndb-info-value\">{Encode(req.QueryString)}</div>");
-            sb.Append("</div>");
-        }
-
-        if (!string.IsNullOrEmpty(req.RouteTemplate))
-        {
-            sb.Append("<div class=\"ndb-info-section\">");
-            sb.Append($"<div class=\"ndb-info-label\">Route Template</div>");
-            sb.Append($"<div class=\"ndb-info-value\">{Encode(req.RouteTemplate)}</div>");
-            sb.Append("</div>");
-        }
-
-        if (!string.IsNullOrEmpty(req.ContentType))
-        {
-            sb.Append("<div class=\"ndb-info-section\">");
-            sb.Append($"<div class=\"ndb-info-label\">Content Type</div>");
-            sb.Append($"<div class=\"ndb-info-value\">{Encode(req.ContentType)}</div>");
-            sb.Append("</div>");
-        }
-
-        // Query Parameters (expandable)
-        if (req.QueryParameters.Any())
-        {
-            sb.Append("<details class=\"ndb-expandable\" open>");
-            sb.Append($"<summary>Query Parameters ({req.QueryParameters.Count})</summary>");
-            sb.Append("<table class=\"ndb-table\">");
-            foreach (var param in req.QueryParameters)
-            {
-                sb.Append("<tr>");
-                sb.Append($"<td class=\"ndb-table-key\">{Encode(param.Key)}</td>");
-                sb.Append($"<td class=\"ndb-table-value\">{Encode(param.Value)}</td>");
-                sb.Append("</tr>");
-            }
-            sb.Append("</table>");
-            sb.Append("</details>");
-        }
-
-        // Headers (expandable)
-        if (req.Headers.Any())
-        {
-            sb.Append("<details class=\"ndb-expandable\">");
-            sb.Append($"<summary>Headers ({req.Headers.Count})</summary>");
-            sb.Append("<table class=\"ndb-table\">");
-            foreach (var header in req.Headers.OrderBy(h => h.Key))
-            {
-                sb.Append("<tr>");
-                sb.Append($"<td class=\"ndb-table-key\">{Encode(header.Key)}</td>");
-                sb.Append($"<td class=\"ndb-table-value\">{Encode(header.Value)}</td>");
-                sb.Append("</tr>");
-            }
-            sb.Append("</table>");
-            sb.Append("</details>");
-        }
-
-        // Cookies (expandable)
-        if (req.Cookies.Any())
-        {
-            sb.Append("<details class=\"ndb-expandable\">");
-            sb.Append($"<summary>Cookies ({req.Cookies.Count})</summary>");
-            sb.Append("<table class=\"ndb-table\">");
-            foreach (var cookie in req.Cookies.OrderBy(c => c.Key))
-            {
-                sb.Append("<tr>");
-                sb.Append($"<td class=\"ndb-table-key\">{Encode(cookie.Key)}</td>");
-                sb.Append($"<td class=\"ndb-table-value\">{Encode(cookie.Value)}</td>");
-                sb.Append("</tr>");
-            }
-            sb.Append("</table>");
-            sb.Append("</details>");
-        }
-
-        return sb.ToString();
+        return $$"""
+            {{cards}}
+            {{pathInfo}}
+            {{queryParams}}
+            {{headers}}
+            {{cookies}}
+            """;
     }
 
-    private void RenderCard(StringBuilder sb, string label, string value, string? color = null)
+    private string RenderCards(Core.Models.RequestInfo req)
     {
-        sb.Append("<div class=\"ndb-card\">");
-        sb.Append($"<div class=\"ndb-card-label\">{Encode(label)}</div>");
-        if (color != null)
-        {
-            sb.Append($"<div class=\"ndb-card-value\" style=\"color: {color};\">{Encode(value)}</div>");
-        }
-        else
-        {
-            sb.Append($"<div class=\"ndb-card-value\">{Encode(value)}</div>");
-        }
-        sb.Append("</div>");
+        var responseSize = req.ResponseSize.HasValue ? RenderCard("Response Size", FormatBytes(req.ResponseSize.Value)) : "";
+
+        return $$"""
+            <div class="ndb-dashboard" style="margin-bottom: 16px;">
+                {{RenderCard("Method", req.Method, GetMethodColor(req.Method))}}
+                {{RenderCard("Status", req.StatusCode.ToString(), GetStatusColor(req.StatusCode))}}
+                {{RenderCard("Duration", $"{req.DurationMs:0.##}ms")}}
+                {{responseSize}}
+            </div>
+            """;
+    }
+
+    private string RenderPathInfo(Core.Models.RequestInfo req)
+    {
+        var queryString = !string.IsNullOrEmpty(req.QueryString) ? $$"""
+            <div class="ndb-info-section">
+                <div class="ndb-info-label">Query String</div>
+                <div class="ndb-info-value">{{Encode(req.QueryString)}}</div>
+            </div>
+            """ : "";
+
+        var routeTemplate = !string.IsNullOrEmpty(req.RouteTemplate) ? $$"""
+            <div class="ndb-info-section">
+                <div class="ndb-info-label">Route Template</div>
+                <div class="ndb-info-value">{{Encode(req.RouteTemplate)}}</div>
+            </div>
+            """ : "";
+
+        var contentType = !string.IsNullOrEmpty(req.ContentType) ? $$"""
+            <div class="ndb-info-section">
+                <div class="ndb-info-label">Content Type</div>
+                <div class="ndb-info-value">{{Encode(req.ContentType)}}</div>
+            </div>
+            """ : "";
+
+        return $$"""
+            <div class="ndb-info-section">
+                <div class="ndb-info-label">Path</div>
+                <div class="ndb-info-value">{{Encode(req.Path)}}</div>
+            </div>
+            {{queryString}}
+            {{routeTemplate}}
+            {{contentType}}
+            """;
+    }
+
+    private string RenderQueryParameters(Core.Models.RequestInfo req)
+    {
+        if (!req.QueryParameters.Any())
+            return "";
+
+        var rows = string.Join("", req.QueryParameters.Select(param => $$"""
+            <tr>
+                <td class="ndb-table-key">{{Encode(param.Key)}}</td>
+                <td class="ndb-table-value">{{Encode(param.Value)}}</td>
+            </tr>
+            """));
+
+        return $$"""
+            <details class="ndb-expandable" open>
+                <summary>Query Parameters ({{req.QueryParameters.Count}})</summary>
+                <table class="ndb-table">
+                    {{rows}}
+                </table>
+            </details>
+            """;
+    }
+
+    private string RenderHeaders(Core.Models.RequestInfo req)
+    {
+        if (!req.Headers.Any())
+            return "";
+
+        var rows = string.Join("", req.Headers.OrderBy(h => h.Key).Select(header => $$"""
+            <tr>
+                <td class="ndb-table-key">{{Encode(header.Key)}}</td>
+                <td class="ndb-table-value">{{Encode(header.Value)}}</td>
+            </tr>
+            """));
+
+        return $$"""
+            <details class="ndb-expandable">
+                <summary>Headers ({{req.Headers.Count}})</summary>
+                <table class="ndb-table">
+                    {{rows}}
+                </table>
+            </details>
+            """;
+    }
+
+    private string RenderCookies(Core.Models.RequestInfo req)
+    {
+        if (!req.Cookies.Any())
+            return "";
+
+        var rows = string.Join("", req.Cookies.OrderBy(c => c.Key).Select(cookie => $$"""
+            <tr>
+                <td class="ndb-table-key">{{Encode(cookie.Key)}}</td>
+                <td class="ndb-table-value">{{Encode(cookie.Value)}}</td>
+            </tr>
+            """));
+
+        return $$"""
+            <details class="ndb-expandable">
+                <summary>Cookies ({{req.Cookies.Count}})</summary>
+                <table class="ndb-table">
+                    {{rows}}
+                </table>
+            </details>
+            """;
+    }
+
+    private string RenderCard(string label, string value, string? color = null)
+    {
+        var valueStyle = color != null ? $" style=\"color: {color};\"" : "";
+
+        return $$"""
+            <div class="ndb-card">
+                <div class="ndb-card-label">{{Encode(label)}}</div>
+                <div class="ndb-card-value"{{valueStyle}}>{{Encode(value)}}</div>
+            </div>
+            """;
     }
 
     private string? GetMethodColor(string method)

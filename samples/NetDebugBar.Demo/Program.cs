@@ -7,7 +7,9 @@ using NetDebugBar.Interceptors;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add NetDebugBar services
-builder.Services.AddNetDebugBar();
+builder.Services.AddNetDebugBar(options => {
+    options.AccentColor = "rgb(24, 120, 184)";
+});
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");

@@ -1,4 +1,3 @@
-using System.Text;
 using NetDebugBar.Core;
 using NetDebugBar.Core.Models;
 
@@ -17,77 +16,80 @@ public class TimelinePanel : IDebugBarPanel
 
     public string RenderTabContent(NetDebugBarContext debug)
     {
-        var sb = new StringBuilder();
-
         var hasPrevious = debug.PreviousSnapshot?.TimelineEvents.Any() == true;
         var hasCurrent = debug.TimelineEvents.Any();
 
         if (!hasCurrent && !hasPrevious)
-        {
-            sb.Append("<p style=\"color: #999; margin-top: 10px;\">No timeline events recorded</p>");
-            return sb.ToString();
-        }
+            return """<p style="color: #999; margin-top: 10px;">No timeline events recorded</p>""";
 
-        // Previous Request Timeline
-        if (hasPrevious)
-        {
-            sb.Append("<div class=\"ndb-section-header\">Previous Request</div>");
-            RenderTimeline(sb, debug.PreviousSnapshot!.TimelineEvents, debug.PreviousSnapshot.Request?.DurationMs ?? 100);
-        }
+        var previousTimeline = hasPrevious
+            ? RenderPreviousTimeline(debug.PreviousSnapshot!.TimelineEvents, debug.PreviousSnapshot.Request?.DurationMs ?? 100)
+            : "";
 
-        // Current Request Timeline
-        if (hasCurrent)
-        {
-            sb.Append("<div class=\"ndb-section-header\">Current Request</div>");
-            var totalDuration = debug.Request?.DurationMs ?? debug.Stopwatch.Elapsed.TotalMilliseconds;
-            RenderTimeline(sb, debug.TimelineEvents, totalDuration);
-        }
+        var currentTimeline = hasCurrent
+            ? RenderCurrentTimeline(debug.TimelineEvents, debug.Request?.DurationMs ?? debug.Stopwatch.Elapsed.TotalMilliseconds)
+            : "";
 
-        return sb.ToString();
+        return $$"""
+            {{previousTimeline}}
+            {{currentTimeline}}
+            """;
     }
 
-    private void RenderTimeline(StringBuilder sb, List<TimelineEvent> events, double totalDuration)
+    private string RenderPreviousTimeline(List<TimelineEvent> events, double totalDuration)
+    {
+        var timeline = RenderTimeline(events, totalDuration);
+        return $$"""
+            <div class="ndb-section-header">Previous Request</div>
+            {{timeline}}
+            """;
+    }
+
+    private string RenderCurrentTimeline(List<TimelineEvent> events, double totalDuration)
+    {
+        var timeline = RenderTimeline(events, totalDuration);
+        return $$"""
+            <div class="ndb-section-header">Current Request</div>
+            {{timeline}}
+            """;
+    }
+
+    private string RenderTimeline(List<TimelineEvent> events, double totalDuration)
     {
         if (totalDuration <= 0) totalDuration = 1; // Avoid division by zero
 
-        // Sort events by start time
-        var sortedEvents = events.OrderBy(e => e.StartOffsetMs).ToList();
+        var sortedEvents = events.OrderBy(e => e.StartOffsetMs);
+        var eventRows = string.Join("", sortedEvents.Select(evt => RenderTimelineEvent(evt, totalDuration)));
 
-        sb.Append("<div class=\"ndb-timeline\">");
+        return $$"""
+            <div class="ndb-timeline">
+                {{eventRows}}
+                <div class="ndb-timeline-row" style="border-top: 1px solid #555; margin-top: 8px; padding-top: 8px;">
+                    <div class="ndb-timeline-label" style="font-weight: bold; color: #0ff;">Total Duration</div>
+                    <div class="ndb-timeline-track"></div>
+                    <div class="ndb-timeline-time" style="font-weight: bold; color: #0ff;">{{totalDuration:0.##}}ms</div>
+                </div>
+            </div>
+            """;
+    }
 
-        foreach (var evt in sortedEvents)
-        {
-            var leftPercent = (evt.StartOffsetMs / totalDuration) * 100;
-            var widthPercent = Math.Max((evt.DurationMs / totalDuration) * 100, 0.5); // Min 0.5% width for visibility
-            var color = evt.Color ?? "#6366f1";
+    private string RenderTimelineEvent(TimelineEvent evt, double totalDuration)
+    {
+        var leftPercent = (evt.StartOffsetMs / totalDuration) * 100;
+        var widthPercent = Math.Max((evt.DurationMs / totalDuration) * 100, 0.5); // Min 0.5% width for visibility
+        var color = evt.Color ?? "#6366f1";
 
-            sb.Append("<div class=\"ndb-timeline-row\">");
-
-            // Event label
-            sb.Append($"<div class=\"ndb-timeline-label\">");
-            sb.Append($"<span style=\"color: {color};\">●</span> ");
-            sb.Append($"{Encode(evt.Name)}");
-            sb.Append("</div>");
-
-            // Timeline track with bar
-            sb.Append("<div class=\"ndb-timeline-track\">");
-            sb.Append($"<div class=\"ndb-timeline-bar\" style=\"left:{leftPercent:0.##}%;width:{widthPercent:0.##}%;background:{color};\" title=\"{Encode(evt.Name)}: {evt.DurationMs:0.##}ms\"></div>");
-            sb.Append("</div>");
-
-            // Duration
-            sb.Append($"<div class=\"ndb-timeline-time\">{evt.DurationMs:0.##}ms</div>");
-
-            sb.Append("</div>");
-        }
-
-        // Total duration indicator
-        sb.Append("<div class=\"ndb-timeline-row\" style=\"border-top: 1px solid #555; margin-top: 8px; padding-top: 8px;\">");
-        sb.Append("<div class=\"ndb-timeline-label\" style=\"font-weight: bold; color: #0ff;\">Total Duration</div>");
-        sb.Append("<div class=\"ndb-timeline-track\"></div>");
-        sb.Append($"<div class=\"ndb-timeline-time\" style=\"font-weight: bold; color: #0ff;\">{totalDuration:0.##}ms</div>");
-        sb.Append("</div>");
-
-        sb.Append("</div>");
+        return $$"""
+            <div class="ndb-timeline-row">
+                <div class="ndb-timeline-label">
+                    <span style="color: {{color}};">●</span> {{Encode(evt.Name)}}
+                </div>
+                <div class="ndb-timeline-track">
+                    <div class="ndb-timeline-bar" style="left:{{leftPercent:0.##}}%;width:{{widthPercent:0.##}}%;background:{{color}};" title="{{Encode(evt.Name)}}: {{evt.DurationMs:0.##}}ms"></div>
+                </div>
+                <div class="ndb-timeline-time">{{evt.DurationMs:0.##}}ms</div>
+            </div>
+            """;
     }
 
     private static string Encode(string s) => System.Net.WebUtility.HtmlEncode(s);

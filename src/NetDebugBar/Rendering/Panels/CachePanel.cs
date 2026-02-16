@@ -1,4 +1,3 @@
-using System.Text;
 using NetDebugBar.Core;
 using NetDebugBar.Core.Models;
 
@@ -17,18 +16,25 @@ public class CachePanel : IDebugBarPanel
 
     public string RenderTabContent(NetDebugBarContext debug)
     {
-        var sb = new StringBuilder();
-
         var hasPrevious = debug.PreviousSnapshot?.CacheOperations.Any() == true;
         var hasCurrent = debug.CacheOperations.Any();
 
         if (!hasCurrent && !hasPrevious)
-        {
-            sb.Append("<p style=\"color: #999; margin-top: 10px;\">No cache operations recorded</p>");
-            return sb.ToString();
-        }
+            return """<p style="color: #999; margin-top: 10px;">No cache operations recorded</p>""";
 
-        // Summary cards
+        var summary = RenderSummary(debug);
+        var previousOps = hasPrevious ? RenderPreviousOperations(debug.PreviousSnapshot!.CacheOperations) : "";
+        var currentOps = hasCurrent ? RenderCurrentOperations(debug.CacheOperations) : "";
+
+        return $$"""
+            {{summary}}
+            {{previousOps}}
+            {{currentOps}}
+            """;
+    }
+
+    private string RenderSummary(NetDebugBarContext debug)
+    {
         var allOps = debug.CacheOperations.Concat(debug.PreviousSnapshot?.CacheOperations ?? Enumerable.Empty<CacheOperationInfo>()).ToList();
         var gets = allOps.Count(o => o.OperationType == CacheOperationType.Get);
         var hits = allOps.Count(o => o.OperationType == CacheOperationType.Get && o.IsHit == true);
@@ -36,63 +42,65 @@ public class CachePanel : IDebugBarPanel
         var sets = allOps.Count(o => o.OperationType == CacheOperationType.Set);
         var removes = allOps.Count(o => o.OperationType == CacheOperationType.Remove);
         var hitRate = gets > 0 ? (hits * 100.0 / gets) : 0;
+        var hitRateColor = hitRate > 75 ? "#10b981" : hitRate > 50 ? "#f59e0b" : "#ef4444";
 
-        sb.Append("<div class=\"ndb-dashboard\" style=\"margin-bottom: 8px;\">");
-        RenderCard(sb, "Total Operations", allOps.Count.ToString());
-        RenderCard(sb, "Gets", gets.ToString());
-        RenderCard(sb, "Hits", hits.ToString(), "#10b981");
-        RenderCard(sb, "Misses", misses.ToString(), "#ef4444");
-        RenderCard(sb, "Hit Rate", $"{hitRate:0.#}%", hitRate > 75 ? "#10b981" : hitRate > 50 ? "#f59e0b" : "#ef4444");
-        RenderCard(sb, "Sets", sets.ToString());
-        RenderCard(sb, "Removes", removes.ToString());
-        sb.Append("</div>");
-
-        // Previous Operations
-        if (hasPrevious)
-        {
-            sb.Append("<div class=\"ndb-section-header\">Previous Request</div>");
-            sb.Append("<table class=\"ndb-table ndb-cache-table\">");
-            sb.Append("<thead><tr>");
-            sb.Append("<th>Operation</th>");
-            sb.Append("<th>Key</th>");
-            sb.Append("<th>Result</th>");
-            sb.Append("<th>Duration</th>");
-            sb.Append("<th>Type</th>");
-            sb.Append("</tr></thead><tbody>");
-            foreach (var op in debug.PreviousSnapshot!.CacheOperations)
-            {
-                RenderOperation(sb, op);
-            }
-            sb.Append("</tbody></table>");
-        }
-
-        // Current Operations
-        if (hasCurrent)
-        {
-            sb.Append("<div class=\"ndb-section-header\">Current Request</div>");
-            sb.Append("<table class=\"ndb-table ndb-cache-table\">");
-            sb.Append("<thead><tr>");
-            sb.Append("<th>Operation</th>");
-            sb.Append("<th>Key</th>");
-            sb.Append("<th>Result</th>");
-            sb.Append("<th>Duration</th>");
-            sb.Append("<th>Type</th>");
-            sb.Append("</tr></thead><tbody>");
-            foreach (var op in debug.CacheOperations)
-            {
-                RenderOperation(sb, op);
-            }
-            sb.Append("</tbody></table>");
-        }
-
-        return sb.ToString();
+        return $$"""
+            <div class="ndb-dashboard" style="margin-bottom: 8px;">
+                {{RenderCard("Total Operations", allOps.Count.ToString())}}
+                {{RenderCard("Gets", gets.ToString())}}
+                {{RenderCard("Hits", hits.ToString(), "#10b981")}}
+                {{RenderCard("Misses", misses.ToString(), "#ef4444")}}
+                {{RenderCard("Hit Rate", $"{hitRate:0.#}%", hitRateColor)}}
+                {{RenderCard("Sets", sets.ToString())}}
+                {{RenderCard("Removes", removes.ToString())}}
+            </div>
+            """;
     }
 
-    private void RenderOperation(StringBuilder sb, CacheOperationInfo op)
+    private string RenderPreviousOperations(IEnumerable<CacheOperationInfo> operations)
     {
-        sb.Append("<tr>");
+        var rows = string.Join("", operations.Select(RenderOperation));
 
-        // Operation Type
+        return $$"""
+            <div class="ndb-section-header">Previous Request</div>
+            <table class="ndb-table ndb-cache-table">
+                <thead><tr>
+                    <th>Operation</th>
+                    <th>Key</th>
+                    <th>Result</th>
+                    <th>Duration</th>
+                    <th>Type</th>
+                </tr></thead>
+                <tbody>
+                    {{rows}}
+                </tbody>
+            </table>
+            """;
+    }
+
+    private string RenderCurrentOperations(IEnumerable<CacheOperationInfo> operations)
+    {
+        var rows = string.Join("", operations.Select(RenderOperation));
+
+        return $$"""
+            <div class="ndb-section-header">Current Request</div>
+            <table class="ndb-table ndb-cache-table">
+                <thead><tr>
+                    <th>Operation</th>
+                    <th>Key</th>
+                    <th>Result</th>
+                    <th>Duration</th>
+                    <th>Type</th>
+                </tr></thead>
+                <tbody>
+                    {{rows}}
+                </tbody>
+            </table>
+            """;
+    }
+
+    private string RenderOperation(CacheOperationInfo op)
+    {
         var opColor = op.OperationType switch
         {
             CacheOperationType.Get => "#3b82f6",
@@ -100,45 +108,32 @@ public class CachePanel : IDebugBarPanel
             CacheOperationType.Remove => "#ef4444",
             _ => "#999"
         };
-        sb.Append($"<td style=\"color: {opColor};\">{op.OperationType}</td>");
 
-        // Key
-        sb.Append($"<td>{Encode(op.Key)}</td>");
+        var result = op.OperationType == CacheOperationType.Get
+            ? $"<td style=\"color: {(op.IsHit == true ? "#10b981" : "#ef4444")};\">{(op.IsHit == true ? "HIT" : "MISS")}</td>"
+            : "<td>-</td>";
 
-        // Result (Hit/Miss for Get operations)
-        if (op.OperationType == CacheOperationType.Get)
-        {
-            var resultColor = op.IsHit == true ? "#10b981" : "#ef4444";
-            var resultText = op.IsHit == true ? "HIT" : "MISS";
-            sb.Append($"<td style=\"color: {resultColor};\">{resultText}</td>");
-        }
-        else
-        {
-            sb.Append("<td>-</td>");
-        }
-
-        // Duration
-        sb.Append($"<td>{op.DurationMs:0.##}ms</td>");
-
-        // Value Type
-        sb.Append($"<td>{Encode(op.ValueTypeName ?? "-")}</td>");
-
-        sb.Append("</tr>");
+        return $$"""
+            <tr>
+                <td style="color: {{opColor}};">{{op.OperationType}}</td>
+                <td>{{Encode(op.Key)}}</td>
+                {{result}}
+                <td>{{op.DurationMs:0.##}}ms</td>
+                <td>{{Encode(op.ValueTypeName ?? "-")}}</td>
+            </tr>
+            """;
     }
 
-    private void RenderCard(StringBuilder sb, string label, string value, string? color = null)
+    private string RenderCard(string label, string value, string? color = null)
     {
-        sb.Append("<div class=\"ndb-card\">");
-        sb.Append($"<div class=\"ndb-card-label\">{Encode(label)}</div>");
-        if (color != null)
-        {
-            sb.Append($"<div class=\"ndb-card-value\" style=\"color: {color};\">{Encode(value)}</div>");
-        }
-        else
-        {
-            sb.Append($"<div class=\"ndb-card-value\">{Encode(value)}</div>");
-        }
-        sb.Append("</div>");
+        var valueStyle = color != null ? $" style=\"color: {color};\"" : "";
+
+        return $$"""
+            <div class="ndb-card">
+                <div class="ndb-card-label">{{Encode(label)}}</div>
+                <div class="ndb-card-value"{{valueStyle}}>{{Encode(value)}}</div>
+            </div>
+            """;
     }
 
     private static string Encode(string s) => System.Net.WebUtility.HtmlEncode(s);

@@ -1,4 +1,3 @@
-using System.Text;
 using NetDebugBar.Core;
 using NetDebugBar.Core.Models;
 
@@ -24,86 +23,92 @@ public class QueriesPanel : IDebugBarPanel
 
     public string RenderTabContent(NetDebugBarContext debug)
     {
-        var sb = new StringBuilder();
-
-        // Query Legend
-        sb.Append("<div style=\"margin-bottom: 12px; font-size:10px; color: #999;\">");
-        sb.Append("<span class=\"ndb-query-good\">● Fast ≤ ");
-        sb.Append(_options.MediumQueryThresholdMs);
-        sb.Append("ms</span> ");
-        sb.Append("<span style=\"margin: 0 8px;\">|</span>");
-        sb.Append("<span class=\"ndb-query-medium\">● Medium ≤ ");
-        sb.Append(_options.SlowQueryThresholdMs);
-        sb.Append("ms</span> ");
-        sb.Append("<span style=\"margin: 0 8px;\">|</span>");
-        sb.Append("<span class=\"ndb-query-slow\">● Slow &gt; ");
-        sb.Append(_options.SlowQueryThresholdMs);
-        sb.Append("ms</span>");
-        sb.Append("</div>");
-
+        var legend = RenderLegend();
         var hasPrevious = debug.PreviousSnapshot?.Queries.Any() == true;
         var hasCurrent = debug.CurrentQueries.Any();
 
-        // Previous Queries
-        if (hasPrevious)
-        {
-            sb.Append("<div class=\"ndb-section-header\">Previous Request (POST / Redirect)</div>");
-            sb.Append("<ul class=\"ndb-queries-list\">");
-            foreach (var q in debug.PreviousSnapshot!.Queries)
-            {
-                RenderQuery(sb, q);
-            }
-            sb.Append("</ul>");
-        }
+        var previousQueries = hasPrevious ? RenderPreviousQueries(debug.PreviousSnapshot!.Queries) : "";
+        var currentQueries = hasCurrent ? RenderCurrentQueries(debug.CurrentQueries) : "";
+        var noQueries = !hasCurrent && !hasPrevious ? """<p style="color: #999; margin-top: 10px;">No queries recorded</p>""" : "";
 
-        // Current Queries
-        if (hasCurrent)
-        {
-            sb.Append("<div class=\"ndb-section-header\">Current Request</div>");
-            sb.Append("<ul class=\"ndb-queries-list\">");
-            foreach (var q in debug.CurrentQueries)
-            {
-                RenderQuery(sb, q);
-            }
-            sb.Append("</ul>");
-        }
-
-        // No Queries Message
-        if (!hasCurrent && !hasPrevious)
-        {
-            sb.Append("<p style=\"color: #999; margin-top: 10px;\">No queries recorded</p>");
-        }
-
-        return sb.ToString();
+        return $$"""
+            {{legend}}
+            {{previousQueries}}
+            {{currentQueries}}
+            {{noQueries}}
+            """;
     }
 
-    private void RenderQuery(StringBuilder sb, QueryInfo query)
+    private string RenderLegend()
+    {
+        return $$"""
+            <div style="margin-bottom: 12px; font-size:10px; color: #999;">
+                <span class="ndb-query-good">● Fast ≤ {{_options.MediumQueryThresholdMs}}ms</span>
+                <span style="margin: 0 8px;">|</span>
+                <span class="ndb-query-medium">● Medium ≤ {{_options.SlowQueryThresholdMs}}ms</span>
+                <span style="margin: 0 8px;">|</span>
+                <span class="ndb-query-slow">● Slow &gt; {{_options.SlowQueryThresholdMs}}ms</span>
+            </div>
+            """;
+    }
+
+    private string RenderPreviousQueries(IEnumerable<QueryInfo> queries)
+    {
+        var queryItems = string.Join("", queries.Select(RenderQuery));
+
+        return $$"""
+            <div class="ndb-section-header">Previous Request (POST / Redirect)</div>
+            <ul class="ndb-queries-list">
+                {{queryItems}}
+            </ul>
+            """;
+    }
+
+    private string RenderCurrentQueries(IEnumerable<QueryInfo> queries)
+    {
+        var queryItems = string.Join("", queries.Select(RenderQuery));
+
+        return $$"""
+            <div class="ndb-section-header">Current Request</div>
+            <ul class="ndb-queries-list">
+                {{queryItems}}
+            </ul>
+            """;
+    }
+
+    private string RenderQuery(QueryInfo query)
     {
         var speedClass = GetSpeedClass(query.Duration);
+        var parameters = query.Parameters.Any() ? RenderParameters(query.Parameters) : "";
 
-        sb.Append("<li class=\"ndb-query-item\">");
-        sb.Append($"<span class=\"ndb-query-duration {speedClass}\">{query.Duration:0.##}ms</span>");
-        sb.Append($"<span class=\"ndb-query-sql\">{Encode(query.Sql)}</span>");
+        return $$"""
+            <li class="ndb-query-item">
+                <span class="ndb-query-duration {{speedClass}}">{{query.Duration:0.##}}ms</span>
+                <span class="ndb-query-sql">{{Encode(query.Sql)}}</span>
+                {{parameters}}
+            </li>
+            """;
+    }
 
-        // Render parameters if any (will be populated in Phase 4)
-        if (query.Parameters.Any())
-        {
-            sb.Append("<details style=\"margin-left: 68px; margin-top: 4px;\">");
-            sb.Append($"<summary style=\"cursor: pointer; font-size: 10px; color: #888;\">{query.Parameters.Count} parameter(s)</summary>");
-            sb.Append("<table class=\"ndb-params-table\" style=\"margin-top: 4px; font-size: 10px;\">");
-            foreach (var param in query.Parameters)
-            {
-                sb.Append("<tr>");
-                sb.Append($"<td style=\"color: #6af; padding-right: 8px;\">{Encode(param.Name)}</td>");
-                sb.Append($"<td style=\"color: #999; padding-right: 8px;\">{Encode(param.TypeName)}</td>");
-                sb.Append($"<td style=\"color: #ddd;\">{Encode(param.Value ?? "NULL")}</td>");
-                sb.Append("</tr>");
-            }
-            sb.Append("</table>");
-            sb.Append("</details>");
-        }
+    private string RenderParameters(IEnumerable<QueryParameterInfo> parameters)
+    {
+        var count = parameters.Count();
+        var rows = string.Join("", parameters.Select(param => $$"""
+            <tr>
+                <td style="color: #6af; padding-right: 8px;">{{Encode(param.Name)}}</td>
+                <td style="color: #999; padding-right: 8px;">{{Encode(param.TypeName)}}</td>
+                <td style="color: #ddd;">{{Encode(param.Value ?? "NULL")}}</td>
+            </tr>
+            """));
 
-        sb.Append("</li>");
+        return $$"""
+            <details style="margin-left: 68px; margin-top: 4px;">
+                <summary style="cursor: pointer; font-size: 10px; color: #888;">{{count}} parameter(s)</summary>
+                <table class="ndb-params-table" style="margin-top: 4px; font-size: 10px;">
+                    {{rows}}
+                </table>
+            </details>
+            """;
     }
 
     private string GetSpeedClass(double duration)

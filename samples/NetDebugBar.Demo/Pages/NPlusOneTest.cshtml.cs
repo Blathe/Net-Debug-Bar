@@ -18,19 +18,38 @@ namespace NetDebugBar.Demo.Pages
 
         public async Task OnGetAsync()
         {
-            // Deliberately load games WITHOUT .Include() to cause N+1 queries
-            // When we access game.Publisher in the view, EF will execute a separate query for each game
-            Games = await _context.Games
+            // Simulate a realistic scenario: user has a list of favorite game IDs
+            // and we want to display details for each one
+
+            // Step 1: Get game IDs (e.g., from user favorites, search results, etc.)
+            var gameIds = await _context.Games
                 .OrderBy(g => g.Name)
-                .Take(10) // Limit to 10 to make it obvious
+                .Take(10)
+                .Select(g => g.Id)
                 .ToListAsync();
 
-            // Force lazy loading of publishers by accessing them here
-            // This will trigger N separate queries (one per game)
-            foreach (var game in Games)
+            // Step 2: ANTI-PATTERN - Load each game individually in a loop
+            // This creates N+1 queries: one query per game!
+            Games = new List<Game>();
+            foreach (var id in gameIds)
             {
-                _ = game.Publisher?.Name; // Access Publisher to trigger lazy load
+                // Each iteration executes a separate query:
+                // SELECT * FROM Games WHERE Id = @p0
+                // This is the N+1 problem!
+                var game = await _context.Games
+                    .Include(g => g.Publisher) // Even with Include, it's still N queries
+                    .FirstOrDefaultAsync(g => g.Id == id);
+
+                if (game != null)
+                    Games.Add(game);
             }
+
+            // CORRECT APPROACH (commented out to show the problem):
+            // var games = await _context.Games
+            //     .Where(g => gameIds.Contains(g.Id))
+            //     .Include(g => g.Publisher)
+            //     .ToListAsync();
+            // This would be a SINGLE query with a WHERE IN clause
         }
     }
 }

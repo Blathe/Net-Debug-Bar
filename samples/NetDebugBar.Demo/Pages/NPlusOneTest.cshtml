@@ -12,7 +12,22 @@
         Check the Queries panel in the debug bar below to see the N+1 warnings.
     </div>
 
-    <h3>Games and Publishers (Bad - N+1 Queries)</h3>
+    <div class="alert alert-info">
+        <h5>The Problem:</h5>
+        <p>Loading games <strong>one by one in a loop</strong> instead of using a batch query.</p>
+        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;"><code>// ❌ BAD: N+1 queries (10 separate queries)
+foreach (var id in gameIds) {
+    var game = await db.Games
+        .FirstOrDefaultAsync(g => g.Id == id);
+}
+
+// ✅ GOOD: Single query with WHERE IN
+var games = await db.Games
+    .Where(g => gameIds.Contains(g.Id))
+    .ToListAsync();</code></pre>
+    </div>
+
+    <h3>Games Loaded (One Query Per Game = N+1 Problem)</h3>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -33,10 +48,11 @@
         </tbody>
     </table>
 
-    <p class="text-muted">
+    <p class="text-muted mt-3">
         <small>
-            <strong>What's happening:</strong> Loading @Model.Games.Count games without .Include(g => g.Publisher),
-            then accessing Publisher for each game in the loop causes @Model.Games.Count separate queries for publishers.
+            <strong>What's happening:</strong> The code executed <strong>@Model.Games.Count separate queries</strong>
+            (one per game ID) instead of a single batch query. This is a common real-world N+1 pattern that happens
+            when loading items in a loop. Check the <strong>Queries panel</strong> below to see the N+1 warning!
         </small>
     </p>
 </div>

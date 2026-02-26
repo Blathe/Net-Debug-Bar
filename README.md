@@ -1,5 +1,7 @@
 # NetDebugBar
 
+![A simple debug bar at the bottom of a webpage](https://i.ibb.co/PZtj8FH7/Screenshot-2026-02-25-235241.png)
+
 A comprehensive debug toolbar for ASP.NET Core 9 applications, inspired by Laravel Debug Bar. NetDebugBar provides real-time insights into database queries, cache operations, logs, HTTP requests, and request timeline visualization.
 
 ![.NET Version](https://img.shields.io/badge/.NET-9.0-purple)
